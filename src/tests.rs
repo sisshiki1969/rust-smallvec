@@ -815,45 +815,6 @@ fn test_resize() {
     assert_eq!(v[..], [1, 0][..]);
 }
 
-#[cfg(feature = "write")]
-#[test]
-fn test_write() {
-    use std::io::Write;
-
-    let data = [1, 2, 3, 4, 5];
-
-    let mut small_vec: SmallVec<[u8; 2]> = SmallVec::new();
-    let len = small_vec.write(&data[..]).unwrap();
-    assert_eq!(len, 5);
-    assert_eq!(small_vec.as_ref(), data.as_ref());
-
-    let mut small_vec: SmallVec<[u8; 2]> = SmallVec::new();
-    small_vec.write_all(&data[..]).unwrap();
-    assert_eq!(small_vec.as_ref(), data.as_ref());
-}
-
-#[cfg(feature = "serde")]
-extern crate bincode;
-
-#[cfg(feature = "serde")]
-#[test]
-fn test_serde() {
-    use self::bincode::{config, deserialize};
-    let mut small_vec: SmallVec<[i32; 2]> = SmallVec::new();
-    small_vec.push(1);
-    let encoded = config().limit(100).serialize(&small_vec).unwrap();
-    let decoded: SmallVec<[i32; 2]> = deserialize(&encoded).unwrap();
-    assert_eq!(small_vec, decoded);
-    small_vec.push(2);
-    // Spill the vec
-    small_vec.push(3);
-    small_vec.push(4);
-    // Check again after spilling.
-    let encoded = config().limit(100).serialize(&small_vec).unwrap();
-    let decoded: SmallVec<[i32; 2]> = deserialize(&encoded).unwrap();
-    assert_eq!(small_vec, decoded);
-}
-
 #[test]
 fn grow_to_shrink() {
     let mut v: SmallVec<[u8; 2]> = SmallVec::new();

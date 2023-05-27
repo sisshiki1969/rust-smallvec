@@ -83,7 +83,6 @@
 #![cfg_attr(feature = "may_dangle", feature(dropck_eyepatch))]
 #![cfg_attr(
     feature = "debugger_visualizer",
-    feature(debugger_visualizer),
     debugger_visualizer(natvis_file = "../debug_metadata/smallvec.natvis")
 )]
 #![deny(missing_docs)]
@@ -91,7 +90,7 @@
 #[doc(hidden)]
 pub extern crate alloc;
 
-#[cfg(any(test, feature = "write"))]
+#[cfg(test)]
 extern crate std;
 
 #[cfg(test)]
@@ -112,18 +111,6 @@ use core::mem::MaybeUninit;
 use core::ops::{self, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
-
-#[cfg(feature = "serde")]
-use serde::{
-    de::{Deserialize, Deserializer, SeqAccess, Visitor},
-    ser::{Serialize, SerializeSeq, Serializer},
-};
-
-#[cfg(feature = "serde")]
-use core::marker::PhantomData;
-
-#[cfg(feature = "write")]
-use std::io;
 
 /// Creates a [`SmallVec`] containing the arguments.
 ///
@@ -411,6 +398,7 @@ impl<'a, T: 'a + Array> Drop for Drain<'a, T> {
 }
 
 #[cfg(feature = "union")]
+#[repr(C)]
 union SmallVecData<A: Array> {
     inline: core::mem::ManuallyDrop<MaybeUninit<A>>,
     heap: (*mut A::Item, usize),
@@ -552,6 +540,7 @@ unsafe impl<A: Array + Sync> Sync for SmallVecData<A> {}
 /// assert_eq!(v.len(), 5);
 /// assert!(v.spilled());
 /// ```
+#[repr(C)]
 pub struct SmallVec<A: Array> {
     // The capacity field is used to determine which of the storage variants is active:
     // If capacity <= Self::inline_capacity() then the inline variant is used and capacity holds the current length of the vector (number of elements actually in use).
@@ -1585,88 +1574,6 @@ impl<A: Array> BorrowMut<[A::Item]> for SmallVec<A> {
     #[inline]
     fn borrow_mut(&mut self) -> &mut [A::Item] {
         self
-    }
-}
-
-#[cfg(feature = "write")]
-#[cfg_attr(docsrs, doc(cfg(feature = "write")))]
-impl<A: Array<Item = u8>> io::Write for SmallVec<A> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.extend_from_slice(buf);
-        Ok(())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[cfg(feature = "serde")]
-#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
-impl<A: Array> Serialize for SmallVec<A>
-where
-    A::Item: Serialize,
-{
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_seq(Some(self.len()))?;
-        for item in self {
-            state.serialize_element(&item)?;
-        }
-        state.end()
-    }
-}
-
-#[cfg(feature = "serde")]
-#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
-impl<'de, A: Array> Deserialize<'de> for SmallVec<A>
-where
-    A::Item: Deserialize<'de>,
-{
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_seq(SmallVecVisitor {
-            phantom: PhantomData,
-        })
-    }
-}
-
-#[cfg(feature = "serde")]
-struct SmallVecVisitor<A> {
-    phantom: PhantomData<A>,
-}
-
-#[cfg(feature = "serde")]
-impl<'de, A: Array> Visitor<'de> for SmallVecVisitor<A>
-where
-    A::Item: Deserialize<'de>,
-{
-    type Value = SmallVec<A>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("a sequence")
-    }
-
-    fn visit_seq<B>(self, mut seq: B) -> Result<Self::Value, B::Error>
-    where
-        B: SeqAccess<'de>,
-    {
-        use serde::de::Error;
-        let len = seq.size_hint().unwrap_or(0);
-        let mut values = SmallVec::new();
-        values.try_reserve(len).map_err(B::Error::custom)?;
-
-        while let Some(value) = seq.next_element()? {
-            values.push(value);
-        }
-
-        Ok(values)
     }
 }
 
