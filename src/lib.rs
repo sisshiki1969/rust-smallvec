@@ -76,7 +76,6 @@
 //!
 //! Tracking issue: [rust-lang/rust#34761](https://github.com/rust-lang/rust/issues/34761)
 
-#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "specialization", allow(incomplete_features))]
 #![cfg_attr(feature = "specialization", feature(specialization))]
@@ -86,6 +85,7 @@
     debugger_visualizer(natvis_file = "../debug_metadata/smallvec.natvis")
 )]
 #![deny(missing_docs)]
+#![feature(offset_of)]
 
 #[doc(hidden)]
 pub extern crate alloc;
@@ -111,6 +111,17 @@ use core::mem::MaybeUninit;
 use core::ops::{self, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
+
+/// Offset of the capacity.
+pub const OFFSET_CAPA: usize = std::mem::offset_of!(SmallVec<[u64; 5]>, capacity);
+/// Offset of the data.
+const OFFSET_DATA: usize = std::mem::offset_of!(SmallVec<[u64; 5]>, data);
+/// Offset of the heap ptr.
+pub const OFFSET_HEAP_PTR: usize =
+    OFFSET_DATA + std::mem::offset_of!(SmallVecData<[u64; 5]>, heap.0);
+/// Offset of the length of underlying heap array.
+pub const OFFSET_HEAP_LEN: usize =
+    OFFSET_DATA + std::mem::offset_of!(SmallVecData<[u64; 5]>, heap.1);
 
 /// Creates a [`SmallVec`] containing the arguments.
 ///
