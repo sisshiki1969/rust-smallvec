@@ -15,7 +15,6 @@ documentation = "https://docs.rs/smallvec/"
 const_generics = []
 const_new = ["const_generics"]
 write = []
-union = []
 specialization = []
 may_dangle = []
 

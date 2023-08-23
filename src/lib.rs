@@ -228,21 +228,6 @@ macro_rules! smallvec_inline {
     });
 }
 
-/// `panic!()` in debug builds, optimization hint in release.
-#[cfg(not(feature = "union"))]
-macro_rules! debug_unreachable {
-    () => {
-        debug_unreachable!("entered unreachable code")
-    };
-    ($e:expr) => {
-        if cfg!(not(debug_assertions)) {
-            unreachable_unchecked();
-        } else {
-            panic!($e);
-        }
-    };
-}
-
 /// Trait to be implemented by a collection that can be extended from a slice
 ///
 /// ## Example
@@ -408,14 +393,13 @@ impl<'a, T: 'a + Array> Drop for Drain<'a, T> {
     }
 }
 
-#[cfg(feature = "union")]
 #[repr(C)]
 union SmallVecData<A: Array> {
     inline: core::mem::ManuallyDrop<MaybeUninit<A>>,
     heap: (*mut A::Item, usize),
 }
 
-#[cfg(all(feature = "union", feature = "const_new"))]
+#[cfg(feature = "const_new")]
 impl<T, const N: usize> SmallVecData<[T; N]> {
     #[cfg_attr(docsrs, doc(cfg(feature = "const_new")))]
     #[inline]
@@ -426,7 +410,6 @@ impl<T, const N: usize> SmallVecData<[T; N]> {
     }
 }
 
-#[cfg(feature = "union")]
 impl<A: Array> SmallVecData<A> {
     #[inline]
     unsafe fn inline(&self) -> *const A::Item {
@@ -457,68 +440,6 @@ impl<A: Array> SmallVecData<A> {
     #[inline]
     fn from_heap(ptr: *mut A::Item, len: usize) -> SmallVecData<A> {
         SmallVecData { heap: (ptr, len) }
-    }
-}
-
-#[cfg(not(feature = "union"))]
-enum SmallVecData<A: Array> {
-    Inline(MaybeUninit<A>),
-    Heap((*mut A::Item, usize)),
-}
-
-#[cfg(all(not(feature = "union"), feature = "const_new"))]
-impl<T, const N: usize> SmallVecData<[T; N]> {
-    #[cfg_attr(docsrs, doc(cfg(feature = "const_new")))]
-    #[inline]
-    const fn from_const(inline: MaybeUninit<[T; N]>) -> Self {
-        SmallVecData::Inline(inline)
-    }
-}
-
-#[cfg(not(feature = "union"))]
-impl<A: Array> SmallVecData<A> {
-    #[inline]
-    unsafe fn inline(&self) -> *const A::Item {
-        match self {
-            SmallVecData::Inline(a) => a.as_ptr() as *const A::Item,
-            _ => debug_unreachable!(),
-        }
-    }
-    #[inline]
-    unsafe fn inline_mut(&mut self) -> *mut A::Item {
-        match self {
-            SmallVecData::Inline(a) => a.as_mut_ptr() as *mut A::Item,
-            _ => debug_unreachable!(),
-        }
-    }
-    #[inline]
-    fn from_inline(inline: MaybeUninit<A>) -> SmallVecData<A> {
-        SmallVecData::Inline(inline)
-    }
-    #[inline]
-    unsafe fn into_inline(self) -> MaybeUninit<A> {
-        match self {
-            SmallVecData::Inline(a) => a,
-            _ => debug_unreachable!(),
-        }
-    }
-    #[inline]
-    unsafe fn heap(&self) -> (*mut A::Item, usize) {
-        match self {
-            SmallVecData::Heap(data) => *data,
-            _ => debug_unreachable!(),
-        }
-    }
-    #[inline]
-    unsafe fn heap_mut(&mut self) -> &mut (*mut A::Item, usize) {
-        match self {
-            SmallVecData::Heap(data) => data,
-            _ => debug_unreachable!(),
-        }
-    }
-    #[inline]
-    fn from_heap(ptr: *mut A::Item, len: usize) -> SmallVecData<A> {
-        SmallVecData::Heap((ptr, len))
     }
 }
 
