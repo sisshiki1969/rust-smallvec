@@ -116,6 +116,8 @@ use core::slice::{self, SliceIndex};
 pub const OFFSET_CAPA: usize = std::mem::offset_of!(SmallVec<[u64; 5]>, capacity);
 /// Offset of the data.
 const OFFSET_DATA: usize = std::mem::offset_of!(SmallVec<[u64; 5]>, data);
+/// Offset of the inline array.
+pub const OFFSET_INLINE: usize = OFFSET_DATA;
 /// Offset of the heap ptr.
 pub const OFFSET_HEAP_PTR: usize =
     OFFSET_DATA + std::mem::offset_of!(SmallVecData<[u64; 5]>, heap.0);
