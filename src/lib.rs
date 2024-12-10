@@ -85,8 +85,6 @@
     debugger_visualizer(natvis_file = "../debug_metadata/smallvec.natvis")
 )]
 #![deny(missing_docs)]
-#![feature(offset_of)]
-#![feature(offset_of_nested)]
 
 #[doc(hidden)]
 pub extern crate alloc;
